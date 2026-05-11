@@ -1,0 +1,32 @@
+{
+  "name": "telegram",
+  "description": "Telegram chat bridge. Mirrors chat.input / chat.response between the brAIn bus and a Telegram bot (paste a BotFather token to connect).",
+  "tags": ["service", "bridge", "telegram", "chat"],
+  "default_authority": 1,
+  "default_priority": 5,
+  "default_subscriptions": [
+    {
+      "topic": "chat.input",
+      "description": "Mirrored to Telegram for every known chat (except when the message itself originated from Telegram — loop guard via metadata.platform)."
+    },
+    {
+      "topic": "chat.response",
+      "description": "Brain (or other node) replies (exact-topic flavor used by the default seed)."
+    },
+    {
+      "topic": "chat.response.*",
+      "description": "Brain (or other node) replies with a sub-topic suffix (e.g. chat.response.user1)."
+    },
+    {
+      "topic": "bridge.telegram.control",
+      "description": "UI control plane — `{action: connect|disconnect|status}`. The UI publishes here from `system.telegram-ui` after saving a new bot_token so the handler picks the change up immediately."
+    }
+  ],
+  "default_publishes": [
+    "chat.input",
+    "bridge.telegram.status",
+    "bridge.telegram.chats"
+  ],
+  "has_ui": true,
+  "supports_transport": ["process"]
+}

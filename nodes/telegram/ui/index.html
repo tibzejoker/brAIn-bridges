@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>telegram bridge</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel-2: #1e293b;
+      --border: #334155;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #229ed9;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --error: #ef4444;
+    }
+    html, body { height: 100%; background: var(--bg); color: var(--text); font: 13px/1.5 ui-sans-serif, system-ui, sans-serif; }
+    body { display: flex; flex-direction: column; }
+
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--panel);
+      flex-shrink: 0;
+    }
+    header h1 { font-size: 14px; color: var(--accent); letter-spacing: 0.02em; }
+    .hint { font-size: 11px; color: var(--muted); }
+    .pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px; border-radius: 12px;
+      background: var(--bg); border: 1px solid var(--border); font-size: 11px;
+    }
+    .pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+    .pill.ok .dot { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+    .pill.warn .dot { background: var(--warn); }
+    .pill.err .dot { background: var(--error); }
+
+    main {
+      flex: 1; padding: 18px; overflow: auto;
+      display: flex; flex-direction: column; gap: 16px;
+      max-width: 760px; width: 100%; margin: 0 auto;
+    }
+
+    .card {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+      padding: 14px 16px;
+    }
+    .card h2 {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
+      color: var(--muted); margin-bottom: 10px;
+    }
+
+    .steps { display: flex; flex-direction: column; gap: 10px; }
+    .step {
+      display: grid; grid-template-columns: 24px 1fr; gap: 10px; align-items: start;
+    }
+    .step .n {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: var(--panel-2); border: 1px solid var(--border);
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 11px; color: var(--accent); font-weight: 600;
+    }
+    .step .body p { font-size: 13px; }
+    .step .body .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    .copy-row {
+      display: flex; gap: 6px; align-items: center; margin-top: 6px;
+      background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+      padding: 4px 6px;
+    }
+    .copy-row code {
+      flex: 1; font: 12px ui-monospace, monospace;
+      color: var(--accent); white-space: nowrap; overflow-x: auto;
+    }
+    .copy-row button, .link-btn {
+      background: transparent; color: var(--muted);
+      border: 1px solid var(--border); border-radius: 3px;
+      padding: 2px 8px; font: inherit; font-size: 11px;
+      cursor: pointer;
+    }
+    .copy-row button:hover, .link-btn:hover { color: var(--text); border-color: var(--accent); }
+    .link-btn { padding: 4px 10px; display: inline-flex; gap: 4px; align-items: center; text-decoration: none; }
+
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    input[type=text], input[type=password], button.primary, button.ghost {
+      background: var(--bg); color: var(--text); border: 1px solid var(--border);
+      padding: 6px 10px; border-radius: 4px; font: inherit; font-size: 13px;
+    }
+    button.primary {
+      background: var(--accent); color: #fff; border-color: var(--accent);
+      font-weight: 600; cursor: pointer;
+    }
+    button.primary:hover:not(:disabled) { background: #1c8bc1; }
+    button.ghost { cursor: pointer; }
+    button.ghost:hover { border-color: var(--accent); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .grow { flex: 1; min-width: 200px; }
+
+    .chats { display: flex; flex-direction: column; gap: 6px; }
+    .chat {
+      display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center;
+      background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px;
+      padding: 8px 10px;
+    }
+    .chat .name { font-weight: 500; }
+    .chat .meta { font-size: 11px; color: var(--muted); font-family: ui-monospace, monospace; }
+
+    .err-msg { color: var(--error); font-size: 12px; margin-top: 6px; }
+    .ok-msg { color: var(--ok); font-size: 12px; margin-top: 6px; }
+    .empty { color: var(--muted); font-style: italic; font-size: 12px; padding: 8px 0; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>telegram bridge</h1>
+      <div class="hint">Mirror a Telegram bot to/from the brAIn chat bus.</div>
+    </div>
+    <div class="pill" id="status"><span class="dot"></span><span id="status-text">loading…</span></div>
+  </header>
+
+  <main>
+
+    <div class="card">
+      <h2>1 · Create a bot in Telegram</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="n">1</div>
+          <div class="body">
+            <p>Open <strong>@BotFather</strong> in Telegram and start the chat.</p>
+            <div class="row" style="margin-top: 6px;">
+              <a class="link-btn" href="https://t.me/BotFather" target="_blank" rel="noopener">↗ Open @BotFather</a>
+              <span class="sub">(uses the official Telegram link)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="n">2</div>
+          <div class="body">
+            <p>Send this command to BotFather:</p>
+            <div class="copy-row">
+              <code id="cmd-newbot">/newbot</code>
+              <button class="ghost" data-copy="cmd-newbot">copy</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="n">3</div>
+          <div class="body">
+            <p>BotFather asks for a <em>display name</em> (anything) and a <em>username</em> (must end with <code>bot</code>, e.g. <code>my_brain_bot</code>).</p>
+            <p class="sub">If your first username pick is taken, just try another one — BotFather tells you immediately.</p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="n">4</div>
+          <div class="body">
+            <p>BotFather replies with a token that looks like <code>123456789:ABCdefGhIJklmNoPQRstuvwxYZ-1234567</code>. <strong>Copy it</strong> and paste below.</p>
+            <p class="sub">Treat it like a password — anyone with the token can act as your bot.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>2 · Save the token</h2>
+      <div class="row">
+        <input id="token" type="password" class="grow" placeholder="Paste the bot token from BotFather" autocomplete="off" spellcheck="false" />
+        <button id="toggle" class="ghost" title="Show / hide">👁</button>
+        <button id="save" class="primary">Save &amp; connect</button>
+      </div>
+      <div id="save-status"></div>
+    </div>
+
+    <div class="card">
+      <h2>3 · Start talking to your bot</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="n">5</div>
+          <div class="body">
+            <p>Open the bot in Telegram (replace <code>&lt;your_bot_username&gt;</code>) and tap <strong>Start</strong>:</p>
+            <div class="copy-row">
+              <code id="bot-url">https://t.me/&lt;your_bot_username&gt;</code>
+              <button class="ghost" data-copy="bot-url">copy</button>
+              <a id="bot-open" class="link-btn" href="https://t.me/BotFather" target="_blank" rel="noopener" style="display:none;">↗ open</a>
+            </div>
+            <p class="sub" id="bot-username-hint" style="margin-top:6px;">After you save a token, the bot username appears here.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="n">6</div>
+          <div class="body">
+            <p>Send any message. It shows up below in <em>Known chats</em>, and every chat in this list mirrors what other surfaces post on <code>chat.input</code> / <code>chat.response.*</code>.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Known chats</h2>
+      <div id="chats" class="chats">
+        <div class="empty">No chats yet. Send a message to the bot in Telegram, the chat will appear here.</div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    const nodeId = window.location.pathname.split('/nodes/')[1]?.split('/ui')[0];
+    const apiBase = window.location.origin;
+
+    const els = {
+      status: document.getElementById('status'),
+      statusText: document.getElementById('status-text'),
+      token: document.getElementById('token'),
+      toggle: document.getElementById('toggle'),
+      save: document.getElementById('save'),
+      saveStatus: document.getElementById('save-status'),
+      botUrl: document.getElementById('bot-url'),
+      botOpen: document.getElementById('bot-open'),
+      botHint: document.getElementById('bot-username-hint'),
+      chats: document.getElementById('chats'),
+    };
+
+    let lastMessageId = null;
+    let savedToken = '';
+    let botUsername = null;
+
+    function escapeHtml(s) {
+      return String(s ?? '').replace(/[&<>"']/g, (c) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+      }[c]));
+    }
+
+    function setStatus(state, text) {
+      els.status.className = `pill ${state}`;
+      els.statusText.textContent = text;
+    }
+
+    // Wire up every [data-copy] button to copy its sibling code's text.
+    document.querySelectorAll('[data-copy]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.copy;
+        const el = document.getElementById(id);
+        const text = el?.textContent ?? '';
+        if (!text) return;
+        try {
+          await navigator.clipboard.writeText(text);
+          const orig = btn.textContent;
+          btn.textContent = '✓ copied';
+          setTimeout(() => { btn.textContent = orig; }, 1200);
+        } catch { /* clipboard blocked */ }
+      });
+    });
+
+    els.toggle.addEventListener('click', () => {
+      els.token.type = els.token.type === 'password' ? 'text' : 'password';
+    });
+
+    async function fetchNetwork() {
+      try {
+        const res = await fetch(`${apiBase}/network`);
+        const data = await res.json();
+        const me = data.nodes?.find((n) => n.id === nodeId);
+        if (me) {
+          const existing = me.config_overrides?.bot_token ?? '';
+          if (existing && !els.token.value) {
+            els.token.value = existing;
+            savedToken = existing;
+          }
+        }
+      } catch { /* ignore */ }
+    }
+
+    async function pollMessages() {
+      try {
+        const res = await fetch(`${apiBase}/nodes/${nodeId}/ui/messages`);
+        if (!res.ok) { setStatus('err', 'node not running'); return; }
+        const messages = await res.json();
+        let startIdx = 0;
+        if (lastMessageId) {
+          const idx = messages.findIndex((m) => m.id === lastMessageId);
+          if (idx >= 0) startIdx = idx + 1;
+        }
+        for (const msg of messages.slice(startIdx)) {
+          handleMessage(msg);
+          lastMessageId = msg.id;
+        }
+      } catch { setStatus('err', 'disconnected'); }
+    }
+
+    function handleMessage(msg) {
+      if (msg.topic === 'bridge.telegram.status') {
+        const meta = msg.metadata ?? {};
+        const state = meta.state ?? 'idle';
+        if (state === 'connected') {
+          setStatus('ok', `connected · @${meta.bot_username ?? '?'}`);
+          els.saveStatus.innerHTML = `<div class="ok-msg">Connected as @${escapeHtml(meta.bot_username ?? '?')}.</div>`;
+          if (meta.bot_username) {
+            botUsername = meta.bot_username;
+            const url = `https://t.me/${meta.bot_username}`;
+            els.botUrl.textContent = url;
+            els.botOpen.href = url;
+            els.botOpen.style.display = 'inline-flex';
+            els.botHint.textContent = `Your bot: @${meta.bot_username}`;
+          }
+        } else if (state === 'connecting') {
+          setStatus('warn', 'connecting…');
+          els.saveStatus.innerHTML = `<div class="hint">Connecting to Telegram…</div>`;
+        } else if (state === 'idle') {
+          setStatus('warn', meta.reason === 'no-token' ? 'no token' : 'idle');
+          if (meta.reason !== 'no-token') els.saveStatus.innerHTML = `<div class="hint">Idle.</div>`;
+        } else if (state === 'disconnected') {
+          setStatus('warn', 'disconnected');
+          els.saveStatus.innerHTML = `<div class="hint">Disconnected.</div>`;
+        } else if (state === 'error') {
+          setStatus('err', `error: ${meta.error ?? ''}`);
+          els.saveStatus.innerHTML = `<div class="err-msg">${escapeHtml(meta.error ?? 'unknown error')}</div>`;
+        }
+      }
+      if (msg.topic === 'bridge.telegram.chats' && Array.isArray(msg.metadata?.chats)) {
+        renderChats(msg.metadata.chats);
+      }
+    }
+
+    function renderChats(chats) {
+      if (chats.length === 0) {
+        els.chats.innerHTML = `<div class="empty">No chats yet. Send a message to the bot in Telegram, the chat will appear here.</div>`;
+        return;
+      }
+      const c = document.createElement('div');
+      c.className = 'chats';
+      for (const ch of chats) {
+        const row = document.createElement('div');
+        row.className = 'chat';
+        const lastSeen = ch.last_seen ? new Date(ch.last_seen).toLocaleTimeString() : '—';
+        row.innerHTML = `
+          <div>
+            <div class="name">${escapeHtml(ch.title || ('chat-' + ch.id))}</div>
+            <div class="meta">${escapeHtml(ch.type)} · id ${ch.id} · last seen ${lastSeen}</div>
+          </div>
+        `;
+        c.appendChild(row);
+      }
+      els.chats.replaceChildren(c);
+    }
+
+    async function saveToken() {
+      const token = els.token.value.trim();
+      els.saveStatus.innerHTML = '';
+      if (!token) {
+        els.saveStatus.innerHTML = `<div class="err-msg">Token is empty.</div>`;
+        return;
+      }
+      if (!/^\d+:[A-Za-z0-9_-]{20,}$/.test(token)) {
+        els.saveStatus.innerHTML = `<div class="err-msg">That doesn't look like a Telegram bot token. Expected format: <code>123456789:ABCdef…</code></div>`;
+        return;
+      }
+      els.save.disabled = true;
+      try {
+        // 1. Persist the token in the node's config_overrides.
+        const cfgRes = await fetch(`${apiBase}/nodes/${nodeId}/config`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bot_token: token }),
+        });
+        if (!cfgRes.ok) throw new Error(`config PATCH failed (${cfgRes.status})`);
+
+        // 2. Nudge the handler so it picks up the new token immediately
+        // (bus anti-loop is bypassed by sending from a synthetic origin).
+        await fetch(`${apiBase}/nodes/${nodeId}/ui/send`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            topic: 'bridge.telegram.control',
+            content: JSON.stringify({ action: 'connect' }),
+            from: 'system.telegram-ui',
+            criticality: 5,
+            metadata: { action: 'connect' },
+          }),
+        });
+
+        savedToken = token;
+        els.saveStatus.innerHTML = `<div class="ok-msg">Saved. Connecting…</div>`;
+      } catch (e) {
+        els.saveStatus.innerHTML = `<div class="err-msg">${escapeHtml(e.message)}</div>`;
+      } finally {
+        els.save.disabled = false;
+      }
+    }
+
+    els.save.addEventListener('click', saveToken);
+    els.token.addEventListener('keydown', (e) => { if (e.key === 'Enter') saveToken(); });
+
+    fetchNetwork();
+    pollMessages();
+    setInterval(pollMessages, 1500);
+    setInterval(fetchNetwork, 5000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+{
+  "name": "brAIn-bridges",
+  "private": true,
+  "license": "MIT",
+  "description": "brAIn bridges — nodes that mirror the chat.input / chat.response bus topics to/from external messengers (Telegram, WhatsApp, Discord, …) so a single conversation can span every platform you're on.",
+  "scripts": { "build": "pnpm -r build" },
+  "devDependencies": { "@types/node": "^20.11.0", "typescript": "^5.4.0" }
+}
