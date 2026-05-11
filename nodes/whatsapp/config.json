@@ -1,0 +1,33 @@
+{
+  "name": "whatsapp",
+  "description": "WhatsApp chat bridge. Mirrors chat.input / chat.response between the brAIn bus and a WhatsApp account (scan a QR from your phone to link, like WhatsApp Web).",
+  "tags": ["service", "bridge", "whatsapp", "chat"],
+  "default_authority": 1,
+  "default_priority": 5,
+  "default_subscriptions": [
+    {
+      "topic": "chat.input",
+      "description": "Mirrored to WhatsApp for every known chat (except when the message itself originated from WhatsApp — loop guard via metadata.platform)."
+    },
+    {
+      "topic": "chat.response",
+      "description": "Brain (or other node) replies (exact-topic flavor used by the default seed)."
+    },
+    {
+      "topic": "chat.response.*",
+      "description": "Brain (or other node) replies with a sub-topic suffix."
+    },
+    {
+      "topic": "bridge.whatsapp.control",
+      "description": "UI control plane — `{action: connect|disconnect|logout|status}`. Triggers reconnect (re-render QR), graceful disconnect, full logout (drop session)."
+    }
+  ],
+  "default_publishes": [
+    "chat.input",
+    "bridge.whatsapp.status",
+    "bridge.whatsapp.qr",
+    "bridge.whatsapp.chats"
+  ],
+  "has_ui": true,
+  "supports_transport": ["process"]
+}

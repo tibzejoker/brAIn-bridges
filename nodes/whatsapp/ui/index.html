@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>whatsapp bridge</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel-2: #1e293b;
+      --border: #334155;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #25d366;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --error: #ef4444;
+    }
+    html, body { height: 100%; background: var(--bg); color: var(--text); font: 13px/1.5 ui-sans-serif, system-ui, sans-serif; }
+    body { display: flex; flex-direction: column; }
+
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--panel);
+      flex-shrink: 0;
+    }
+    header h1 { font-size: 14px; color: var(--accent); letter-spacing: 0.02em; }
+    .hint { font-size: 11px; color: var(--muted); }
+    .pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px; border-radius: 12px;
+      background: var(--bg); border: 1px solid var(--border); font-size: 11px;
+    }
+    .pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+    .pill.ok .dot { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+    .pill.warn .dot { background: var(--warn); }
+    .pill.err .dot { background: var(--error); }
+
+    main {
+      flex: 1; padding: 18px; overflow: auto;
+      display: flex; flex-direction: column; gap: 16px;
+      max-width: 760px; width: 100%; margin: 0 auto;
+    }
+
+    .card {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+      padding: 14px 16px;
+    }
+    .card h2 {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
+      color: var(--muted); margin-bottom: 10px;
+    }
+
+    .steps { display: flex; flex-direction: column; gap: 10px; }
+    .step { display: grid; grid-template-columns: 24px 1fr; gap: 10px; align-items: start; }
+    .step .n {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: var(--panel-2); border: 1px solid var(--border);
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 11px; color: var(--accent); font-weight: 600;
+    }
+    .step .body p { font-size: 13px; }
+    .step .body .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .step code { background: var(--bg); padding: 1px 5px; border-radius: 3px; font: 12px ui-monospace, monospace; }
+
+    .qr-wrap {
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      padding: 12px; background: var(--bg); border: 1px dashed var(--border); border-radius: 6px;
+    }
+    .qr-wrap img {
+      width: 240px; height: 240px; background: white; border-radius: 4px;
+    }
+    .qr-wrap .ph {
+      width: 240px; height: 240px; background: var(--panel-2);
+      border-radius: 4px; display: flex; align-items: center; justify-content: center;
+      color: var(--muted); font-size: 12px; text-align: center; padding: 16px;
+    }
+
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    button.primary, button.ghost, button.danger {
+      background: var(--bg); color: var(--text); border: 1px solid var(--border);
+      padding: 6px 12px; border-radius: 4px; font: inherit; font-size: 13px;
+      cursor: pointer;
+    }
+    button.primary {
+      background: var(--accent); color: #0f172a; border-color: var(--accent);
+      font-weight: 600;
+    }
+    button.primary:hover:not(:disabled) { background: #1cb150; }
+    button.ghost:hover { border-color: var(--accent); }
+    button.danger { background: var(--error); color: white; border-color: var(--error); font-weight: 600; }
+    button.danger:hover:not(:disabled) { background: #c53030; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .chats { display: flex; flex-direction: column; gap: 6px; }
+    .chat {
+      display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center;
+      background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px;
+      padding: 8px 10px;
+    }
+    .chat .name { font-weight: 500; }
+    .chat .meta { font-size: 11px; color: var(--muted); font-family: ui-monospace, monospace; }
+
+    .info-msg { color: var(--text); font-size: 12px; margin-top: 6px; }
+    .err-msg { color: var(--error); font-size: 12px; margin-top: 6px; }
+    .ok-msg { color: var(--ok); font-size: 12px; margin-top: 6px; }
+    .empty { color: var(--muted); font-style: italic; font-size: 12px; padding: 8px 0; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>whatsapp bridge</h1>
+      <div class="hint">Pair a WhatsApp account (via QR, same as WhatsApp Web) to mirror the brAIn chat bus.</div>
+    </div>
+    <div class="pill" id="status"><span class="dot"></span><span id="status-text">loading…</span></div>
+  </header>
+
+  <main>
+
+    <div class="card">
+      <h2>1 · Link your phone to the bridge</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="n">1</div>
+          <div class="body">
+            <p>Open WhatsApp on your phone → tap <strong>Settings</strong> → <strong>Linked devices</strong> → <strong>Link a device</strong>.</p>
+            <p class="sub">(On iOS the menu is under the gear icon; on Android, under the ⋮ menu.)</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="n">2</div>
+          <div class="body">
+            <p>Point your phone's camera at the QR code below.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="n">3</div>
+          <div class="body">
+            <p>Once paired, the QR disappears and the status pill flips to <code>connected</code>. Your existing chats appear below as soon as they send you the first message.</p>
+            <p class="sub">Session is saved in this node's <code>dataDir/auth/</code> — restarts won't ask to re-scan unless WhatsApp expires the link (~14 days of inactivity).</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>QR code</h2>
+      <div class="qr-wrap">
+        <div id="qr-slot" class="ph">No QR yet. Click "Generate QR" below if the status is idle.</div>
+        <div class="hint" id="qr-hint">Auto-refreshes every ~20s while waiting for pairing.</div>
+      </div>
+      <div class="row" style="margin-top: 12px;">
+        <button id="connect" class="primary">Generate QR / Connect</button>
+        <button id="disconnect" class="ghost">Disconnect</button>
+        <button id="logout" class="danger" title="Drop the saved session — you'll need to scan a fresh QR next time">Logout</button>
+      </div>
+      <div id="action-status"></div>
+    </div>
+
+    <div class="card">
+      <h2>Linked chats</h2>
+      <div id="chats" class="chats">
+        <div class="empty">No chats yet. Send a message to your account from another WhatsApp user (or have someone reply) to populate the list.</div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    const nodeId = window.location.pathname.split('/nodes/')[1]?.split('/ui')[0];
+    const apiBase = window.location.origin;
+
+    const els = {
+      status: document.getElementById('status'),
+      statusText: document.getElementById('status-text'),
+      qrSlot: document.getElementById('qr-slot'),
+      qrHint: document.getElementById('qr-hint'),
+      connect: document.getElementById('connect'),
+      disconnect: document.getElementById('disconnect'),
+      logout: document.getElementById('logout'),
+      actionStatus: document.getElementById('action-status'),
+      chats: document.getElementById('chats'),
+    };
+
+    let lastMessageId = null;
+
+    function escapeHtml(s) {
+      return String(s ?? '').replace(/[&<>"']/g, (c) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+      }[c]));
+    }
+
+    function setStatus(state, text) {
+      els.status.className = `pill ${state}`;
+      els.statusText.textContent = text;
+    }
+
+    function renderQr(dataUrl) {
+      if (!dataUrl) {
+        els.qrSlot.innerHTML = `<div class="ph">No QR. ${els.statusText.textContent === 'connected' ? 'Already paired.' : 'Click "Generate QR" to start.'}</div>`;
+        return;
+      }
+      els.qrSlot.innerHTML = '';
+      els.qrSlot.className = '';
+      const img = document.createElement('img');
+      img.alt = 'WhatsApp pairing QR';
+      img.src = dataUrl;
+      els.qrSlot.appendChild(img);
+    }
+
+    async function pollMessages() {
+      try {
+        const res = await fetch(`${apiBase}/nodes/${nodeId}/ui/messages`);
+        if (!res.ok) { setStatus('err', 'node not running'); return; }
+        const messages = await res.json();
+        let startIdx = 0;
+        if (lastMessageId) {
+          const idx = messages.findIndex((m) => m.id === lastMessageId);
+          if (idx >= 0) startIdx = idx + 1;
+        }
+        for (const msg of messages.slice(startIdx)) {
+          handleMessage(msg);
+          lastMessageId = msg.id;
+        }
+      } catch { setStatus('err', 'disconnected'); }
+    }
+
+    function handleMessage(msg) {
+      if (msg.topic === 'bridge.whatsapp.status') {
+        const meta = msg.metadata ?? {};
+        const state = meta.state ?? 'idle';
+        if (state === 'connected') {
+          const label = meta.name ? `connected · ${meta.name}` : (meta.phone ? `connected · +${meta.phone}` : 'connected');
+          setStatus('ok', label);
+          renderQr(null);
+          els.actionStatus.innerHTML = `<div class="ok-msg">Paired. Messages flow through this node now.</div>`;
+        } else if (state === 'connecting') {
+          setStatus('warn', 'connecting…');
+          els.actionStatus.innerHTML = `<div class="info-msg">Talking to WhatsApp servers…</div>`;
+        } else if (state === 'awaiting_scan') {
+          setStatus('warn', 'scan QR with your phone');
+          els.actionStatus.innerHTML = `<div class="info-msg">Open WhatsApp → Linked devices → scan the QR above.</div>`;
+        } else if (state === 'idle') {
+          setStatus('warn', meta.reason === 'not-paired' ? 'not paired' : 'idle');
+        } else if (state === 'disconnected') {
+          setStatus('warn', 'disconnected — reconnecting');
+          renderQr(null);
+        } else if (state === 'logged_out') {
+          setStatus('warn', 'logged out');
+          renderQr(null);
+          els.actionStatus.innerHTML = `<div class="info-msg">Session dropped. Click "Generate QR / Connect" to pair again.</div>`;
+        } else if (state === 'error') {
+          setStatus('err', `error: ${meta.error ?? '?'}`);
+          els.actionStatus.innerHTML = `<div class="err-msg">${escapeHtml(meta.error ?? 'unknown error')}</div>`;
+        }
+      }
+      if (msg.topic === 'bridge.whatsapp.qr') {
+        const dataUrl = msg.metadata?.qr;
+        if (typeof dataUrl === 'string' && dataUrl.length > 0) {
+          renderQr(dataUrl);
+        } else {
+          renderQr(null);
+        }
+      }
+      if (msg.topic === 'bridge.whatsapp.chats' && Array.isArray(msg.metadata?.chats)) {
+        renderChats(msg.metadata.chats);
+      }
+    }
+
+    function renderChats(chats) {
+      if (chats.length === 0) {
+        els.chats.innerHTML = `<div class="empty">No chats yet. Send a message to your account from another WhatsApp user to populate this list.</div>`;
+        return;
+      }
+      const c = document.createElement('div');
+      c.className = 'chats';
+      for (const ch of chats) {
+        const row = document.createElement('div');
+        row.className = 'chat';
+        const lastSeen = ch.last_seen ? new Date(ch.last_seen).toLocaleTimeString() : '—';
+        row.innerHTML = `
+          <div>
+            <div class="name">${escapeHtml(ch.title || ch.jid)}</div>
+            <div class="meta">${escapeHtml(ch.type)} · ${escapeHtml(ch.jid)} · last seen ${lastSeen}</div>
+          </div>
+        `;
+        c.appendChild(row);
+      }
+      els.chats.replaceChildren(c);
+    }
+
+    async function sendControl(action) {
+      try {
+        await fetch(`${apiBase}/nodes/${nodeId}/ui/send`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            topic: 'bridge.whatsapp.control',
+            content: JSON.stringify({ action }),
+            from: 'system.whatsapp-ui',
+            criticality: 5,
+            metadata: { action },
+          }),
+        });
+      } catch (e) {
+        els.actionStatus.innerHTML = `<div class="err-msg">${escapeHtml(e.message)}</div>`;
+      }
+    }
+
+    els.connect.addEventListener('click', () => sendControl('connect'));
+    els.disconnect.addEventListener('click', () => sendControl('disconnect'));
+    els.logout.addEventListener('click', () => {
+      if (!confirm('Drop the saved WhatsApp session? You will need to scan a fresh QR to re-link.')) return;
+      sendControl('logout');
+    });
+
+    pollMessages();
+    setInterval(pollMessages, 1500);
+    // Nudge for an initial status so a fresh-loaded UI knows the state.
+    setTimeout(() => sendControl('status'), 400);
+  </script>
+</body>
+</html>
