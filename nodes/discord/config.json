@@ -1,0 +1,32 @@
+{
+  "name": "discord",
+  "description": "Discord chat bridge. Mirrors chat.input / chat.response between the brAIn bus and a Discord bot (paste a Developer Portal token to connect — supports DMs and any text channel the bot is in).",
+  "tags": ["service", "bridge", "discord", "chat"],
+  "default_authority": 1,
+  "default_priority": 5,
+  "default_subscriptions": [
+    {
+      "topic": "chat.input",
+      "description": "Mirrored to every known Discord channel (except when the message itself came from Discord — loop guard via metadata.platform)."
+    },
+    {
+      "topic": "chat.response",
+      "description": "Brain (or other node) replies (exact-topic flavor used by the default seed)."
+    },
+    {
+      "topic": "chat.response.*",
+      "description": "Brain (or other node) replies with a sub-topic suffix."
+    },
+    {
+      "topic": "bridge.discord.control",
+      "description": "UI control plane — `{action: connect|disconnect|status}`. Pushed from `system.discord-ui` after the user saves a new bot_token."
+    }
+  ],
+  "default_publishes": [
+    "chat.input",
+    "bridge.discord.status",
+    "bridge.discord.channels"
+  ],
+  "has_ui": true,
+  "supports_transport": ["process"]
+}

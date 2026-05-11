@@ -27,7 +27,7 @@ interface ConfigOverrides {
 }
 
 interface ControlPayload {
-  action?: "connect" | "disconnect" | "status";
+  action?: "connect" | "disconnect" | "logout" | "status";
 }
 
 let nodeId: string | null = null;
@@ -35,6 +35,45 @@ let bot: Bot | null = null;
 let activeToken: string | null = null;
 let seenChats = new Map<number, SeenChat>();
 let chatStorePath: string | null = null;
+let sharedTokenPath: string | null = null;
+
+/**
+ * Per-type token cache — `<data-root>/bridges/telegram/token.txt` — so
+ * killing the node + spawning a fresh one keeps the BotFather token
+ * without re-pasting. config_overrides survives an API restart only,
+ * not a kill+respawn (the new instance gets an empty overrides map).
+ */
+function setSharedTokenPath(dataDir: string): void {
+  const rootData = path.dirname(path.dirname(dataDir));
+  sharedTokenPath = path.join(rootData, "bridges", "telegram", "token.txt");
+}
+
+function loadSavedToken(): string | null {
+  try {
+    if (sharedTokenPath && fs.existsSync(sharedTokenPath)) {
+      return fs.readFileSync(sharedTokenPath, "utf8").trim() || null;
+    }
+  } catch (err) {
+    logger.warn({ err, path: sharedTokenPath }, "telegram bridge: loadSavedToken failed");
+  }
+  return null;
+}
+
+function saveTokenToDisk(token: string): void {
+  if (!sharedTokenPath) return;
+  try {
+    fs.mkdirSync(path.dirname(sharedTokenPath), { recursive: true });
+    fs.writeFileSync(sharedTokenPath, token, { mode: 0o600 });
+  } catch (err) {
+    logger.warn({ err, path: sharedTokenPath }, "telegram bridge: saveTokenToDisk failed");
+  }
+}
+
+function wipeTokenFromDisk(): void {
+  if (!sharedTokenPath) return;
+  try { if (fs.existsSync(sharedTokenPath)) fs.unlinkSync(sharedTokenPath); }
+  catch (err) { logger.warn({ err }, "telegram bridge: wipeTokenFromDisk failed"); }
+}
 
 function bus(): NonNullable<typeof BrainService.current>["bus"] | null {
   return BrainService.current?.bus ?? null;
@@ -232,11 +271,30 @@ export const onSpawn: NodeOnSpawn = async (info: NodeInfo) => {
   const overrides = (info.config_overrides ?? {}) as ConfigOverrides;
   publishStatus("idle");
 
-  // dataDir is set on the ctx, not on NodeInfo. The first handler call
-  // will lazy-init the chat store. Until then, in-memory only.
+  // Fast path: config_overrides has the token (API restart, restored
+  // from SQLite). Connect right away — no need to wait for a message.
   if (overrides.bot_token) {
     await startBot(overrides.bot_token);
+    return;
   }
+
+  // Slow path: the disk cache (set on kill+respawn) might hold a token,
+  // but loadSavedToken needs dataDir which only the handler context has.
+  // Nudge ourselves on bridge.telegram.control so the handler runs once,
+  // reads the disk, and auto-connects. 500ms gives BrainService.current
+  // time to settle when this fires from inside the restore loop.
+  setTimeout(() => {
+    const b = bus();
+    if (!b || !nodeId) return;
+    b.publish({
+      from: "system.telegram-boot",
+      topic: "bridge.telegram.control",
+      type: "text",
+      criticality: 2,
+      payload: { content: JSON.stringify({ action: "status" }) },
+      metadata: { action: "status" },
+    });
+  }, 500);
 };
 
 let runtimeSubsAdded = false;
@@ -244,6 +302,7 @@ let runtimeSubsAdded = false;
 export const handler: NodeHandler = async (ctx) => {
   nodeId ??= ctx.node.id;
   if (!chatStorePath) loadSeenChats(ctx.dataDir);
+  if (!sharedTokenPath) setSharedTokenPath(ctx.dataDir);
 
   // Defensive runtime subscriptions — older spawns may have missed
   // bridge.telegram.control / exact chat.response from the config.json.
@@ -266,8 +325,17 @@ export const handler: NodeHandler = async (ctx) => {
 
   const overrides = (ctx.node.config_overrides ?? {}) as ConfigOverrides;
 
-  // Honour a token change (UI saved a new value) — restart the bot if needed.
-  const desired = overrides.bot_token?.trim() ?? "";
+  // Token resolution: config_overrides wins (UI just pasted) → else fall
+  // back to the per-type disk cache, so killing+respawning the node keeps
+  // the bot online without re-pasting.
+  let desired = overrides.bot_token?.trim() ?? "";
+  if (!desired) {
+    const saved = loadSavedToken();
+    if (saved) desired = saved;
+  } else if (desired !== loadSavedToken()) {
+    saveTokenToDisk(desired);
+  }
+
   if (desired && desired !== activeToken) {
     await startBot(desired);
   } else if (!desired && bot) {
@@ -287,6 +355,10 @@ export const handler: NodeHandler = async (ctx) => {
         await startBot(desired);
       } else if (action === "disconnect") {
         await stopBot();
+      } else if (action === "logout") {
+        await stopBot();
+        wipeTokenFromDisk();
+        publishStatus("idle", { reason: "no-token" });
       } else if (action === "status") {
         publishStatus(bot ? "connected" : "idle");
         publishChats();

@@ -373,7 +373,21 @@ async function forwardToWhatsapp(text: string, allowed?: string[]): Promise<void
 export const onSpawn: NodeOnSpawn = async (info: NodeInfo) => {
   nodeId = info.id;
   publishStatus("idle");
-  // dataDir isn't on NodeInfo — handler will lazy-init the rest on first call.
+  // dataDir isn't on NodeInfo — the handler does the heavy init (ensureAuth,
+  // resume from creds.json if any). Nudge it so we don't sit at "idle"
+  // forever when the API reboots and no bus message arrives to wake us.
+  setTimeout(() => {
+    const b = bus();
+    if (!b || !nodeId) return;
+    b.publish({
+      from: "system.whatsapp-boot",
+      topic: "bridge.whatsapp.control",
+      type: "text",
+      criticality: 2,
+      payload: { content: JSON.stringify({ action: "status" }) },
+      metadata: { action: "status" },
+    });
+  }, 500);
 };
 
 export const handler: NodeHandler = async (ctx) => {
