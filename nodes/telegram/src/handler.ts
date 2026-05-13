@@ -313,11 +313,13 @@ export const handler: NodeHandler = async (ctx) => {
     const existing = new Set(ctx.node.subscriptions.map((s) => s.topic));
     if (!existing.has("bridge.telegram.control")) {
       ctx.subscribe("bridge.telegram.control", {
+        internal: true,
         description: "UI control plane — {action: connect|disconnect|status}.",
       });
     }
     if (!existing.has("chat.response")) {
       ctx.subscribe("chat.response", {
+        internal: true,
         description: "Brain replies (exact-topic flavor used by the default seed).",
       });
     }

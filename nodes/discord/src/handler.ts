@@ -385,7 +385,7 @@ export const handler: NodeHandler = async (ctx) => {
     runtimeSubsAdded = true;
     const existing = new Set(ctx.node.subscriptions.map((s) => s.topic));
     for (const t of ["bridge.discord.control", "chat.response"]) {
-      if (!existing.has(t)) ctx.subscribe(t, { description: `runtime-added: ${t}` });
+      if (!existing.has(t)) ctx.subscribe(t, { internal: true, description: `runtime-added: ${t}` });
     }
   }
 

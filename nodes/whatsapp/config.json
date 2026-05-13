@@ -7,19 +7,35 @@
   "default_subscriptions": [
     {
       "topic": "chat.input",
-      "description": "Mirrored to WhatsApp for every known chat (except when the message itself originated from WhatsApp — loop guard via metadata.platform)."
+      "description": "Mirrored to WhatsApp for every known chat (except when the message itself originated from WhatsApp — loop guard via metadata.platform).",
+      "internal": true
     },
     {
       "topic": "chat.response",
-      "description": "Brain (or other node) replies (exact-topic flavor used by the default seed)."
+      "description": "Brain (or other node) replies (exact-topic flavor used by the default seed).",
+      "internal": true
     },
     {
       "topic": "chat.response.*",
-      "description": "Brain (or other node) replies with a sub-topic suffix."
+      "description": "Brain (or other node) replies with a sub-topic suffix.",
+      "internal": true
     },
     {
       "topic": "bridge.whatsapp.control",
-      "description": "UI control plane — `{action: connect|disconnect|logout|status}`. Triggers reconnect (re-render QR), graceful disconnect, full logout (drop session)."
+      "description": "UI control plane — `{action: connect|disconnect|logout|status}`. Triggers reconnect (re-render QR), graceful disconnect, full logout (drop session).",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["action"],
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": ["connect", "disconnect", "logout", "status"],
+            "description": "connect: start socket / re-render QR if unpaired. disconnect: graceful end of the current socket (session kept). logout: drop the WhatsApp session entirely (wipes auth, next connect needs a fresh QR). status: republish current state, QR (if any), and known chats."
+          }
+        }
+      }
     }
   ],
   "default_publishes": [

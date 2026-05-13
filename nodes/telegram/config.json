@@ -7,19 +7,37 @@
   "default_subscriptions": [
     {
       "topic": "chat.input",
-      "description": "Mirrored to Telegram for every known chat (except when the message itself originated from Telegram — loop guard via metadata.platform)."
+      "description": "Mirrored to Telegram for every known chat (except when the message itself originated from Telegram — loop guard via metadata.platform).",
+      "internal": true
     },
     {
       "topic": "chat.response",
-      "description": "Brain (or other node) replies (exact-topic flavor used by the default seed)."
+      "description": "Brain (or other node) replies (exact-topic flavor used by the default seed).",
+      "internal": true
     },
     {
       "topic": "chat.response.*",
-      "description": "Brain (or other node) replies with a sub-topic suffix (e.g. chat.response.user1)."
+      "description": "Brain (or other node) replies with a sub-topic suffix (e.g. chat.response.user1).",
+      "internal": true
     },
     {
       "topic": "bridge.telegram.control",
-      "description": "UI control plane — `{action: connect|disconnect|status}`. The UI publishes here from `system.telegram-ui` after saving a new bot_token so the handler picks the change up immediately."
+      "description": "UI control plane — `{action: connect|disconnect|logout|status}`. The UI publishes here from `system.telegram-ui` after saving a new bot_token so the handler picks the change up immediately.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "title": "TelegramBridgeControl",
+        "description": "Control message for the Telegram bridge. Accepted either as a parsed JSON payload.content or as metadata fields.",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": ["connect", "disconnect", "logout", "status"],
+            "description": "connect: (re)start the bot using the resolved token. disconnect: stop the bot but keep the cached token. logout: stop the bot and wipe the on-disk token cache. status: re-publish bridge.telegram.status + bridge.telegram.chats."
+          }
+        },
+        "required": ["action"],
+        "additionalProperties": false
+      }
     }
   ],
   "default_publishes": [
