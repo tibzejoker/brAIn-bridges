@@ -5,112 +5,155 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>telegram bridge</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --bg: #0f172a;
-      --panel: #111827;
-      --panel-2: #1e293b;
-      --border: #334155;
-      --text: #e2e8f0;
-      --muted: #94a3b8;
-      --accent: #229ed9;
-      --ok: #22c55e;
-      --warn: #f59e0b;
-      --error: #ef4444;
+      --bg: #0A0A0A;
+      --surface: #111111;
+      --elevated: #1A1A1A;
+      --border: #262626;
+      --border-strong: #333333;
+      --text: #EDEDED;
+      --text-dim: #A1A1A1;
+      --text-muted: #707070;
+      --accent: #EDEDED;
+      --accent-fg: #0A0A0A;
+      --danger: #F84E4E;
+      --success: #4ADE80;
+      --warning: #FBBF24;
+      --radius-sm: 4px;
+      --radius: 6px;
+      --radius-lg: 10px;
+      --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px; --space-6: 32px;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+      --font-mono: ui-monospace, 'JetBrains Mono', 'SF Mono', Menlo, monospace;
     }
-    html, body { height: 100%; background: var(--bg); color: var(--text); font: 13px/1.5 ui-sans-serif, system-ui, sans-serif; }
-    body { display: flex; flex-direction: column; }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font-family: var(--font-sans); font-size: 13px; line-height: 1.5;
+      font-feature-settings: "cv11", "ss01", "tnum";
+      -webkit-font-smoothing: antialiased;
+    }
+    button {
+      background: var(--elevated); color: var(--text);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 6px 12px; font-size: 13px; font-family: inherit; cursor: pointer;
+      transition: background 0.1s ease, border-color 0.1s ease;
+    }
+    button:hover { background: var(--border); border-color: var(--border-strong); }
+    button:active { background: var(--border-strong); }
+    button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+    button.primary:hover { filter: brightness(1.12); }
+    button.danger { background: var(--danger); border-color: var(--danger); color: white; }
+    button.danger:hover { filter: brightness(1.12); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    input, select, textarea {
+      background: var(--surface); color: var(--text);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 6px 10px; font-size: 13px; font-family: inherit; outline: none;
+      transition: border-color 0.1s ease;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+    input::placeholder { color: var(--text-muted); }
+    code, pre { font-family: var(--font-mono); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 1px 6px; font-size: 12px; }
+    pre { padding: var(--space-3); overflow-x: auto; }
+    hr { border: none; border-top: 1px solid var(--border); margin: var(--space-3) 0; }
+    h1, h2, h3 { font-weight: 600; margin: 0 0 var(--space-3); letter-spacing: -0.01em; }
+    h1 { font-size: 18px; }
+    h2 { font-size: 15px; }
+    h3 { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .muted { color: var(--text-dim); }
+    .dim { color: var(--text-muted); }
+
+    body { display: flex; flex-direction: column; min-height: 100%; }
 
     header {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--panel);
+      padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border); background: var(--surface);
       flex-shrink: 0;
     }
-    header h1 { font-size: 14px; color: var(--accent); letter-spacing: 0.02em; }
-    .hint { font-size: 11px; color: var(--muted); }
+    header h1 { font-size: 14px; color: var(--text); letter-spacing: 0; }
+    .hint { font-size: 11px; color: var(--text-dim); }
     .pill {
       display: inline-flex; align-items: center; gap: 6px;
-      padding: 4px 10px; border-radius: 12px;
-      background: var(--bg); border: 1px solid var(--border); font-size: 11px;
+      padding: 4px 10px; border-radius: 999px;
+      background: var(--elevated); border: 1px solid var(--border); font-size: 11px;
+      color: var(--text-dim);
     }
-    .pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
-    .pill.ok .dot { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
-    .pill.warn .dot { background: var(--warn); }
-    .pill.err .dot { background: var(--error); }
+    .pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); }
+    .pill.ok .dot { background: var(--success); }
+    .pill.ok { color: var(--text); }
+    .pill.warn .dot { background: var(--warning); }
+    .pill.err .dot { background: var(--danger); }
 
     main {
-      flex: 1; padding: 18px; overflow: auto;
-      display: flex; flex-direction: column; gap: 16px;
+      flex: 1; padding: var(--space-5); overflow: auto;
+      display: flex; flex-direction: column; gap: var(--space-4);
       max-width: 760px; width: 100%; margin: 0 auto;
     }
 
     .card {
-      background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
-      padding: 14px 16px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: var(--space-4);
     }
     .card h2 {
-      font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
-      color: var(--muted); margin-bottom: 10px;
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--text-dim); margin-bottom: var(--space-3); font-weight: 600;
     }
 
-    .steps { display: flex; flex-direction: column; gap: 10px; }
+    .steps { display: flex; flex-direction: column; gap: var(--space-3); }
     .step {
-      display: grid; grid-template-columns: 24px 1fr; gap: 10px; align-items: start;
+      display: grid; grid-template-columns: 24px 1fr; gap: var(--space-3); align-items: start;
     }
     .step .n {
       width: 22px; height: 22px; border-radius: 50%;
-      background: var(--panel-2); border: 1px solid var(--border);
+      background: var(--elevated); border: 1px solid var(--border);
       display: inline-flex; align-items: center; justify-content: center;
-      font-size: 11px; color: var(--accent); font-weight: 600;
+      font-size: 11px; color: var(--text-dim); font-weight: 600;
     }
-    .step .body p { font-size: 13px; }
-    .step .body .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .step .body p { font-size: 13px; margin: 0; }
+    .step .body .sub { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
 
     .copy-row {
       display: flex; gap: 6px; align-items: center; margin-top: 6px;
-      background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+      background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
       padding: 4px 6px;
     }
     .copy-row code {
-      flex: 1; font: 12px ui-monospace, monospace;
-      color: var(--accent); white-space: nowrap; overflow-x: auto;
+      flex: 1; font-family: var(--font-mono);
+      color: var(--text); background: transparent; border: none; padding: 0;
+      white-space: nowrap; overflow-x: auto; font-size: 12px;
     }
     .copy-row button, .link-btn {
-      background: transparent; color: var(--muted);
-      border: 1px solid var(--border); border-radius: 3px;
+      background: transparent; color: var(--text-dim);
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
       padding: 2px 8px; font: inherit; font-size: 11px;
       cursor: pointer;
     }
-    .copy-row button:hover, .link-btn:hover { color: var(--text); border-color: var(--accent); }
+    .copy-row button:hover, .link-btn:hover { color: var(--text); border-color: var(--border-strong); background: var(--elevated); text-decoration: none; }
     .link-btn { padding: 4px 10px; display: inline-flex; gap: 4px; align-items: center; text-decoration: none; }
 
-    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-    input[type=text], input[type=password], button.primary, button.ghost {
-      background: var(--bg); color: var(--text); border: 1px solid var(--border);
-      padding: 6px 10px; border-radius: 4px; font: inherit; font-size: 13px;
+    .row { display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; }
+    .ghost {
+      background: var(--elevated); color: var(--text); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer;
     }
-    button.primary {
-      background: var(--accent); color: #fff; border-color: var(--accent);
-      font-weight: 600; cursor: pointer;
-    }
-    button.primary:hover:not(:disabled) { background: #1c8bc1; }
-    button.ghost { cursor: pointer; }
-    button.ghost:hover { border-color: var(--accent); }
-    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .ghost:hover { background: var(--border); border-color: var(--border-strong); }
     .grow { flex: 1; min-width: 200px; }
 
     .chats { display: flex; flex-direction: column; gap: 6px; }
     .chat {
       display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center;
-      background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px;
+      background: var(--elevated); border: 1px solid var(--border); border-radius: var(--radius-sm);
       padding: 8px 10px;
     }
-    .chat .name { font-weight: 500; }
-    .chat .meta { font-size: 11px; color: var(--muted); font-family: ui-monospace, monospace; }
+    .chat .name { font-weight: 500; color: var(--text); }
+    .chat .meta { font-size: 11px; color: var(--text-dim); font-family: var(--font-mono); }
 
-    .err-msg { color: var(--error); font-size: 12px; margin-top: 6px; }
-    .ok-msg { color: var(--ok); font-size: 12px; margin-top: 6px; }
-    .empty { color: var(--muted); font-style: italic; font-size: 12px; padding: 8px 0; }
+    .err-msg { color: var(--danger); font-size: 12px; margin-top: 6px; }
+    .ok-msg { color: var(--success); font-size: 12px; margin-top: 6px; }
+    .empty { color: var(--text-muted); font-style: italic; font-size: 12px; padding: 8px 0; }
   </style>
 </head>
 <body>
