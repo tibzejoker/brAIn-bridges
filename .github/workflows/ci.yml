@@ -18,6 +18,12 @@ jobs:
     # Single job — this storeproject has no root-level lint script and
     # no framework/node test split, so we just run `pnpm -r ... test`
     # across every workspace package that defines one.
+    #
+    # NOTE: storeprojects don't check in a pnpm-lock.yaml — the lockfile
+    # lives upstream in brAIn/ where the full pnpm workspace globs
+    # storeprojects/brAIn-*/nodes/*. So CI here installs fresh without
+    # frozen-lockfile (and skips the cache: pnpm step which would also
+    # demand a lockfile).
     name: workspace tests
     runs-on: ubuntu-latest
     steps:
@@ -27,6 +33,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --no-frozen-lockfile
       - run: pnpm -r --workspace-concurrency=4 --if-present run test
