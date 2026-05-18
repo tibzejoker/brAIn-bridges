@@ -39,16 +39,16 @@ if (!existsSync(brainPath)) {
   run(`git clone --depth 1 https://github.com/tibzejoker/brAIn.git "${brainPath}"`);
 }
 
-// Bootstrap the workspace — skip the heavy postinstall (clones
-// brAIn-store, installs the NATS binary, etc.) since storeproject
-// unit tests only need types + the build outputs of @brain/sdk and
-// @brain/core.
-run("pnpm install --no-frozen-lockfile --ignore-scripts", { cwd: brainPath });
-run("pnpm --filter @brain/sdk build", { cwd: brainPath });
-run("pnpm --filter @brain/core build", { cwd: brainPath });
+// Full install with lifecycle scripts — brAIn's `onlyBuiltDependencies`
+// (better-sqlite3, @lancedb/lancedb*) need their native bindings
+// compiled, otherwise storeproject node tests like memory-vector or
+// developer fail with "Could not locate the bindings file". The
+// postinstall also builds @brain/sdk, @brain/core, @brain/agent and
+// clones brAIn-store via HTTPS — all safe in CI.
+run("pnpm install --no-frozen-lockfile", { cwd: brainPath });
 
 // Run the storeproject's own tests via its pnpm-workspace.yaml
 // (typically `nodes/*`). brAIn's workspace globs `../storeprojects/...`
-// so `@brain/sdk@workspace:*` resolves at install-time above and the
+// so `@brain/sdk@workspace:*` resolved at install-time above and the
 // types are available now.
 run("pnpm -r --workspace-concurrency=4 --if-present run test");
