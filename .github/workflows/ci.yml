@@ -7,31 +7,36 @@ on:
     branches: [main]
 
 # Cancel older runs on the same ref — only the latest matters for PR
-# turnaround. `cancel-in-progress: true` is essential when the user
-# pushes a fix-up commit before the previous CI finishes.
+# turnaround. `cancel-in-progress: true` is essential when a fix-up
+# commit lands before the previous CI finishes.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   test:
-    # Single job — this storeproject has no root-level lint script and
-    # no framework/node test split, so we just run `pnpm -r ... test`
-    # across every workspace package that defines one.
+    # Storeproject nodes reference `@brain/sdk@workspace:*` so the
+    # brAIn workspace must sit alongside. `scripts/test-with-mandatory.mjs`
+    # clones brAIn from GitHub when the `--download-mandatory-missing-nodes`
+    # flag is set (CI), or fails fast if it's missing locally (dev).
     #
-    # NOTE: storeprojects don't check in a pnpm-lock.yaml — the lockfile
-    # lives upstream in brAIn/ where the full pnpm workspace globs
-    # storeprojects/brAIn-*/nodes/*. So CI here installs fresh without
-    # frozen-lockfile (and skips the cache: pnpm step which would also
-    # demand a lockfile).
+    # Checkout `path:` puts this repo at `storeprojects/<name>/`, mirroring
+    # the user's local layout (~/.../brAIn/, ~/.../storeprojects/<name>/).
     name: workspace tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout this storeproject
+        uses: actions/checkout@v4
+        with:
+          path: storeprojects/${{ github.event.repository.name }}
+
       - uses: pnpm/action-setup@v4
         with: { version: 10 }
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: pnpm install --no-frozen-lockfile
-      - run: pnpm -r --workspace-concurrency=4 --if-present run test
+
+      - name: Test (auto-clones brAIn workspace if missing)
+        working-directory: storeprojects/${{ github.event.repository.name }}
+        run: node scripts/test-with-mandatory.mjs --download-mandatory-missing-nodes
