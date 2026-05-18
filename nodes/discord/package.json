@@ -6,7 +6,8 @@
   "types": "dist/handler.d.ts",
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch"
+    "dev": "tsc --watch",
+    "test": "vitest run"
   },
   "dependencies": {
     "@brain/core": "workspace:*",
@@ -15,6 +16,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "vitest": "^3.2.4"
   }
 }
