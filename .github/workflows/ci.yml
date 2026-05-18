@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel older runs on the same ref — only the latest matters for PR
+# turnaround. `cancel-in-progress: true` is essential when the user
+# pushes a fix-up commit before the previous CI finishes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    # Single job — this storeproject has no root-level lint script and
+    # no framework/node test split, so we just run `pnpm -r ... test`
+    # across every workspace package that defines one.
+    name: workspace tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r --workspace-concurrency=4 --if-present run test
