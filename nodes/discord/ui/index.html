@@ -237,7 +237,7 @@
   </main>
 
   <script>
-    const nodeId = window.location.pathname.split('/nodes/')[1]?.split('/ui')[0];
+    const nodeId = window.location.pathname.split('/node/')[1]?.split('/ui')[0];
     const apiBase = window.location.origin;
 
     const els = {
@@ -312,7 +312,7 @@
 
     async function pollMessages() {
       try {
-        const res = await fetch(`${apiBase}/nodes/${nodeId}/ui/messages`);
+        const res = await fetch(`${apiBase}/node/${nodeId}/messages`);
         if (!res.ok) { setStatus('err', 'node not running'); return; }
         const messages = await res.json();
         let startIdx = 0;
@@ -403,16 +403,10 @@
         });
         if (!cfgRes.ok) throw new Error(`config PATCH failed (${cfgRes.status})`);
 
-        await fetch(`${apiBase}/nodes/${nodeId}/ui/send`, {
+        await fetch(`${apiBase}/node/${nodeId}/bridge.discord.control`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            topic: 'bridge.discord.control',
-            content: JSON.stringify({ action: 'connect' }),
-            from: 'system.discord-ui',
-            criticality: 5,
-            metadata: { action: 'connect' },
-          }),
+          body: JSON.stringify({ action: 'connect' }),
         });
         els.saveStatus.innerHTML = `<div class="ok-msg">Saved. Connecting…</div>`;
       } catch (e) {

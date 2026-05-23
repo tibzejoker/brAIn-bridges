@@ -213,7 +213,7 @@
   </main>
 
   <script>
-    const nodeId = window.location.pathname.split('/nodes/')[1]?.split('/ui')[0];
+    const nodeId = window.location.pathname.split('/node/')[1]?.split('/ui')[0];
     const apiBase = window.location.origin;
 
     const els = {
@@ -256,7 +256,7 @@
 
     async function pollMessages() {
       try {
-        const res = await fetch(`${apiBase}/nodes/${nodeId}/ui/messages`);
+        const res = await fetch(`${apiBase}/node/${nodeId}/messages`);
         if (!res.ok) { setStatus('err', 'node not running'); return; }
         const messages = await res.json();
         let startIdx = 0;
@@ -337,16 +337,10 @@
 
     async function sendControl(action) {
       try {
-        await fetch(`${apiBase}/nodes/${nodeId}/ui/send`, {
+        await fetch(`${apiBase}/node/${nodeId}/bridge.whatsapp.control`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            topic: 'bridge.whatsapp.control',
-            content: JSON.stringify({ action }),
-            from: 'system.whatsapp-ui',
-            criticality: 5,
-            metadata: { action },
-          }),
+          body: JSON.stringify({ action }),
         });
       } catch (e) {
         els.actionStatus.innerHTML = `<div class="err-msg">${escapeHtml(e.message)}</div>`;
