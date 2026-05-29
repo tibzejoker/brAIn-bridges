@@ -1,50 +1,101 @@
 {
   "name": "telegram",
   "description": "Telegram chat bridge. Mirrors chat.input / chat.response between the brAIn bus and a Telegram bot (paste a BotFather token to connect).",
-  "tags": ["service", "bridge", "telegram", "chat"],
+  "tags": [
+    "service",
+    "bridge",
+    "telegram",
+    "chat"
+  ],
   "default_authority": 1,
   "default_priority": 5,
-  "default_subscriptions": [
-    {
-      "topic": "chat.input",
-      "description": "Mirrored to Telegram for every known chat (except when the message itself originated from Telegram — loop guard via metadata.platform).",
-      "internal": true
+  "ports": {
+    "inputs": {
+      "chat.input": {
+        "description": "Mirrored to Telegram for every known chat (except when the message itself originated from Telegram — loop guard via metadata.platform).",
+        "inputSchema": {
+          "type": "object"
+        }
+      },
+      "chat.response": {
+        "description": "Brain (or other node) replies (exact-topic flavor used by the default seed).",
+        "inputSchema": {
+          "type": "object"
+        }
+      },
+      "chat.response.*": {
+        "description": "Brain (or other node) replies with a sub-topic suffix (e.g. chat.response.user1).",
+        "inputSchema": {
+          "type": "object"
+        }
+      },
+      "bridge.telegram.control": {
+        "description": "UI control plane — `{action: connect|disconnect|logout|status}`. The UI publishes here from `system.telegram-ui` after saving a new bot_token so the handler picks the change up immediately.",
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "title": "TelegramBridgeControl",
+          "description": "Control message for the Telegram bridge. Accepted either as a parsed JSON payload.content or as metadata fields.",
+          "properties": {
+            "action": {
+              "type": "string",
+              "enum": [
+                "connect",
+                "disconnect",
+                "logout",
+                "status"
+              ],
+              "description": "connect: (re)start the bot using the resolved token. disconnect: stop the bot but keep the cached token. logout: stop the bot and wipe the on-disk token cache. status: re-publish bridge.telegram.status + bridge.telegram.chats."
+            }
+          },
+          "required": [
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
     },
-    {
-      "topic": "chat.response",
-      "description": "Brain (or other node) replies (exact-topic flavor used by the default seed).",
-      "internal": true
-    },
-    {
-      "topic": "chat.response.*",
-      "description": "Brain (or other node) replies with a sub-topic suffix (e.g. chat.response.user1).",
-      "internal": true
-    },
-    {
-      "topic": "bridge.telegram.control",
-      "description": "UI control plane — `{action: connect|disconnect|logout|status}`. The UI publishes here from `system.telegram-ui` after saving a new bot_token so the handler picks the change up immediately.",
-      "inputSchema": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "type": "object",
-        "title": "TelegramBridgeControl",
-        "description": "Control message for the Telegram bridge. Accepted either as a parsed JSON payload.content or as metadata fields.",
-        "properties": {
-          "action": {
-            "type": "string",
-            "enum": ["connect", "disconnect", "logout", "status"],
-            "description": "connect: (re)start the bot using the resolved token. disconnect: stop the bot but keep the cached token. logout: stop the bot and wipe the on-disk token cache. status: re-publish bridge.telegram.status + bridge.telegram.chats."
-          }
-        },
-        "required": ["action"],
-        "additionalProperties": false
+    "outputs": {
+      "chat.input": {
+        "description": "chat.input"
+      },
+      "bridge.telegram.status": {
+        "description": "bridge.telegram.status"
+      },
+      "bridge.telegram.chats": {
+        "description": "bridge.telegram.chats"
       }
     }
-  ],
-  "default_publishes": [
-    "chat.input",
-    "bridge.telegram.status",
-    "bridge.telegram.chats"
-  ],
+  },
+  "default_port_bindings": {
+    "inputs": {
+      "chat.input": [
+        "chat.input"
+      ],
+      "chat.response": [
+        "chat.response"
+      ],
+      "chat.response.*": [
+        "chat.response.*"
+      ],
+      "bridge.telegram.control": [
+        "bridge.telegram.control"
+      ]
+    },
+    "outputs": {
+      "chat.input": [
+        "chat.input"
+      ],
+      "bridge.telegram.status": [
+        "bridge.telegram.status"
+      ],
+      "bridge.telegram.chats": [
+        "bridge.telegram.chats"
+      ]
+    }
+  },
   "has_ui": true,
-  "supports_transport": ["process"]
+  "supports_transport": [
+    "process"
+  ]
 }

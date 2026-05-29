@@ -1,49 +1,105 @@
 {
   "name": "whatsapp",
   "description": "WhatsApp chat bridge. Mirrors chat.input / chat.response between the brAIn bus and a WhatsApp account (scan a QR from your phone to link, like WhatsApp Web).",
-  "tags": ["service", "bridge", "whatsapp", "chat"],
+  "tags": [
+    "service",
+    "bridge",
+    "whatsapp",
+    "chat"
+  ],
   "default_authority": 1,
   "default_priority": 5,
-  "default_subscriptions": [
-    {
-      "topic": "chat.input",
-      "description": "Mirrored to WhatsApp for every known chat (except when the message itself originated from WhatsApp — loop guard via metadata.platform).",
-      "internal": true
-    },
-    {
-      "topic": "chat.response",
-      "description": "Brain (or other node) replies (exact-topic flavor used by the default seed).",
-      "internal": true
-    },
-    {
-      "topic": "chat.response.*",
-      "description": "Brain (or other node) replies with a sub-topic suffix.",
-      "internal": true
-    },
-    {
-      "topic": "bridge.whatsapp.control",
-      "description": "UI control plane — `{action: connect|disconnect|logout|status}`. Triggers reconnect (re-render QR), graceful disconnect, full logout (drop session).",
-      "inputSchema": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["action"],
-        "properties": {
-          "action": {
-            "type": "string",
-            "enum": ["connect", "disconnect", "logout", "status"],
-            "description": "connect: start socket / re-render QR if unpaired. disconnect: graceful end of the current socket (session kept). logout: drop the WhatsApp session entirely (wipes auth, next connect needs a fresh QR). status: republish current state, QR (if any), and known chats."
+  "ports": {
+    "inputs": {
+      "chat.input": {
+        "description": "Mirrored to WhatsApp for every known chat (except when the message itself originated from WhatsApp — loop guard via metadata.platform).",
+        "inputSchema": {
+          "type": "object"
+        }
+      },
+      "chat.response": {
+        "description": "Brain (or other node) replies (exact-topic flavor used by the default seed).",
+        "inputSchema": {
+          "type": "object"
+        }
+      },
+      "chat.response.*": {
+        "description": "Brain (or other node) replies with a sub-topic suffix.",
+        "inputSchema": {
+          "type": "object"
+        }
+      },
+      "bridge.whatsapp.control": {
+        "description": "UI control plane — `{action: connect|disconnect|logout|status}`. Triggers reconnect (re-render QR), graceful disconnect, full logout (drop session).",
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "action"
+          ],
+          "properties": {
+            "action": {
+              "type": "string",
+              "enum": [
+                "connect",
+                "disconnect",
+                "logout",
+                "status"
+              ],
+              "description": "connect: start socket / re-render QR if unpaired. disconnect: graceful end of the current socket (session kept). logout: drop the WhatsApp session entirely (wipes auth, next connect needs a fresh QR). status: republish current state, QR (if any), and known chats."
+            }
           }
         }
       }
+    },
+    "outputs": {
+      "chat.input": {
+        "description": "chat.input"
+      },
+      "bridge.whatsapp.status": {
+        "description": "bridge.whatsapp.status"
+      },
+      "bridge.whatsapp.qr": {
+        "description": "bridge.whatsapp.qr"
+      },
+      "bridge.whatsapp.chats": {
+        "description": "bridge.whatsapp.chats"
+      }
     }
-  ],
-  "default_publishes": [
-    "chat.input",
-    "bridge.whatsapp.status",
-    "bridge.whatsapp.qr",
-    "bridge.whatsapp.chats"
-  ],
+  },
+  "default_port_bindings": {
+    "inputs": {
+      "chat.input": [
+        "chat.input"
+      ],
+      "chat.response": [
+        "chat.response"
+      ],
+      "chat.response.*": [
+        "chat.response.*"
+      ],
+      "bridge.whatsapp.control": [
+        "bridge.whatsapp.control"
+      ]
+    },
+    "outputs": {
+      "chat.input": [
+        "chat.input"
+      ],
+      "bridge.whatsapp.status": [
+        "bridge.whatsapp.status"
+      ],
+      "bridge.whatsapp.qr": [
+        "bridge.whatsapp.qr"
+      ],
+      "bridge.whatsapp.chats": [
+        "bridge.whatsapp.chats"
+      ]
+    }
+  },
   "has_ui": true,
-  "supports_transport": ["process"]
+  "supports_transport": [
+    "process"
+  ]
 }
