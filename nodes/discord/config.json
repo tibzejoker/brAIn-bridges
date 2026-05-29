@@ -1,47 +1,98 @@
 {
   "name": "discord",
   "description": "Discord chat bridge. Mirrors chat.input / chat.response between the brAIn bus and a Discord bot (paste a Developer Portal token to connect — supports DMs and any text channel the bot is in).",
-  "tags": ["service", "bridge", "discord", "chat"],
+  "tags": [
+    "service",
+    "bridge",
+    "discord",
+    "chat"
+  ],
   "default_authority": 1,
   "default_priority": 5,
-  "default_subscriptions": [
-    {
-      "topic": "chat.input",
-      "description": "Mirrored to every known Discord channel (except when the message itself came from Discord — loop guard via metadata.platform).",
-      "internal": true
+  "ports": {
+    "inputs": {
+      "chat.input": {
+        "description": "Mirrored to every known Discord channel (except when the message itself came from Discord — loop guard via metadata.platform).",
+        "inputSchema": {
+          "type": "object"
+        }
+      },
+      "chat.response": {
+        "description": "Brain (or other node) replies (exact-topic flavor used by the default seed).",
+        "inputSchema": {
+          "type": "object"
+        }
+      },
+      "chat.response.*": {
+        "description": "Brain (or other node) replies with a sub-topic suffix.",
+        "inputSchema": {
+          "type": "object"
+        }
+      },
+      "bridge.discord.control": {
+        "description": "UI control plane — `{action: connect|disconnect|logout|status}`. Pushed from `system.discord-ui` after the user saves a new bot_token.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "action": {
+              "type": "string",
+              "enum": [
+                "connect",
+                "disconnect",
+                "logout",
+                "status"
+              ],
+              "description": "connect: start the Discord client with the stored bot_token. disconnect: stop the client but keep the token on disk. logout: stop and wipe the token from disk. status: re-publish bridge.discord.status + channels."
+            }
+          },
+          "required": [
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
     },
-    {
-      "topic": "chat.response",
-      "description": "Brain (or other node) replies (exact-topic flavor used by the default seed).",
-      "internal": true
-    },
-    {
-      "topic": "chat.response.*",
-      "description": "Brain (or other node) replies with a sub-topic suffix.",
-      "internal": true
-    },
-    {
-      "topic": "bridge.discord.control",
-      "description": "UI control plane — `{action: connect|disconnect|logout|status}`. Pushed from `system.discord-ui` after the user saves a new bot_token.",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "action": {
-            "type": "string",
-            "enum": ["connect", "disconnect", "logout", "status"],
-            "description": "connect: start the Discord client with the stored bot_token. disconnect: stop the client but keep the token on disk. logout: stop and wipe the token from disk. status: re-publish bridge.discord.status + channels."
-          }
-        },
-        "required": ["action"],
-        "additionalProperties": false
+    "outputs": {
+      "chat.input": {
+        "description": "chat.input"
+      },
+      "bridge.discord.status": {
+        "description": "bridge.discord.status"
+      },
+      "bridge.discord.channels": {
+        "description": "bridge.discord.channels"
       }
     }
-  ],
-  "default_publishes": [
-    "chat.input",
-    "bridge.discord.status",
-    "bridge.discord.channels"
-  ],
+  },
+  "default_port_bindings": {
+    "inputs": {
+      "chat.input": [
+        "chat.input"
+      ],
+      "chat.response": [
+        "chat.response"
+      ],
+      "chat.response.*": [
+        "chat.response.*"
+      ],
+      "bridge.discord.control": [
+        "bridge.discord.control"
+      ]
+    },
+    "outputs": {
+      "chat.input": [
+        "chat.input"
+      ],
+      "bridge.discord.status": [
+        "bridge.discord.status"
+      ],
+      "bridge.discord.channels": [
+        "bridge.discord.channels"
+      ]
+    }
+  },
   "has_ui": true,
-  "supports_transport": ["process"]
+  "supports_transport": [
+    "process"
+  ]
 }
