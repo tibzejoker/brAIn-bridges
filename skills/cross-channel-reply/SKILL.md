@@ -1,18 +1,22 @@
 ---
 name: cross-channel-reply
-description: Reply to a user on the chat app they came from (Telegram, Discord, WhatsApp). Use whenever an incoming message arrived through a bridge and your answer must go back to that same person and channel.
+description: Understand how the chat bridges (Telegram, Discord, WhatsApp) mirror one conversation, so you reply correctly. Use whenever a message arrives from a bridge or you're about to answer a bridged user.
 ---
 
-# Replying across a bridge
+# The chat bridges mirror one conversation
 
-A message that came in through a bridge carries where it's from. Your reply has to go back there, not to the generic chat.
+Telegram, Discord and WhatsApp are bridges onto the SAME conversation, and the mirroring is automatic at the bus level — you don't orchestrate it.
 
-## Steps
-1. Read the incoming message's origin metadata (which bridge, which chat/user id).
-2. Send your reply back through the SAME bridge, addressed to that chat/user id — don't broadcast.
-3. Keep formatting plain; bridges render limited markdown.
+## What happens on its own
+- A message typed on one bridge is published as `chat.input`. Every OTHER bridge receives it and forwards it to its platform (mirror), tagged `[platform · sender]`. The origin bridge does NOT re-receive its own message (the bus anti-loop blocks self-echo).
+- So all three channels stay in sync without anyone managing it.
+
+## What that means for you (the brain)
+1. **Reply once on `chat.response`.** Every bridge is subscribed, so your single reply reaches all channels — Telegram, Discord and WhatsApp at once. Don't send one message per platform.
+2. Treat the bridged channels as ONE conversation, not three separate threads.
+3. Inbound lines prefixed `[platform · sender]` tell you who/where it came from — useful context, but you still answer once.
 
 ## Pitfalls
-- Don't leak one channel's conversation into another (a Telegram reply must not land in Discord).
-- If the origin id is missing, ask the bridge rather than guessing a destination.
-- One reply per user turn; bridges rate-limit and double-sends read as spam.
+- Don't try to manually relay or fan-out to individual bridges — that double-sends. The bus already mirrors.
+- Don't worry about echoing back to the origin: the anti-loop handles it. Your job is just one good reply on `chat.response`.
+- Keep it plain text; bridges render limited markdown.
